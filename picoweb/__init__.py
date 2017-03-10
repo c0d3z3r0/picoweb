@@ -43,14 +43,17 @@ def jsonify(writer, dict):
     yield from start_response(writer, "application/json")
     yield from writer.awrite(ujson.dumps(dict))
 
-def start_response(writer, content_type="text/html; charset=utf-8", status="200", headers=None, cacheable=False):
+def start_response(writer, content_type="text/html", status="200", headers=None, charset="utf-8", cacheable=False):
     yield from writer.awrite("HTTP/1.0 %s NA\r\n" % status)
     yield from writer.awrite("Content-Type: ")
     yield from writer.awrite(content_type)
+    yield from writer.awrite("; charset=")
+    yield from writer.awrite(charset)
     if not headers:
         yield from writer.awrite("\r\n\r\n")
         return
     yield from writer.awrite("\r\n")
+    
     if isinstance(headers, bytes) or isinstance(headers, str):
         yield from writer.awrite(headers)
     else:
