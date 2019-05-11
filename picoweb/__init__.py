@@ -278,9 +278,18 @@ class WebApp:
 
     def _load_template(self, tmpl_name):
         if self.template_loader is None:
-            import utemplate.source
-            self.template_loader = utemplate.source.Loader(self.pkg, "templates")
-        return self.template_loader.load(tmpl_name)
+            import utemplate.compiled
+            self.template_loader = utemplate.compiled.Loader(self.pkg, "templates")
+        try:
+            return self.template_loader.load(tmpl_name)
+        except OSError as e:
+            if e.args[0] == uerrno.ENOENT and \
+               self.template_loader is utemplate.compiled.Loader:
+                import utemplate.source
+                self.template_loader = utemplate.source.Loader(self.pkg, "templates")
+                return self.template_loader.load(tmpl_name)
+            else:
+                raise
 
     def render_template(self, writer, tmpl_name, args=()):
         tmpl = self._load_template(tmpl_name)
