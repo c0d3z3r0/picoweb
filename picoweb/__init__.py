@@ -72,7 +72,7 @@ class HTTPRequest:
         pass
 
     def read_data(self):
-        size = int(self.headers[b"Content-Length"])
+        size = int(self.headers["Content-Length"])
         self.data = yield from self.reader.readexactly(size)
 
     def read_form_data(self):
@@ -108,10 +108,12 @@ class WebApp:
     def parse_headers(self, reader):
         headers = {}
         while True:
-            l = yield from reader.readline()
-            if l == b"\r\n":
+            line = yield from reader.readline()
+            line = line.decode()
+
+            if line == "\r\n":
                 break
-            k, v = l.split(b":", 1)
+            k, v = line.split(":", 1)
             headers[k] = v.strip()
         return headers
 
@@ -123,14 +125,13 @@ class WebApp:
         req = None
         try:
             request_line = yield from reader.readline()
-            if request_line == b"":
+            request_line = request_line.decode()
+            if request_line == "":
                 if self.debug >= 0:
                     self.log.error("%s: EOF on request start" % reader)
                 yield from writer.aclose()
                 return
             req = HTTPRequest()
-            # TODO: bytes vs str
-            request_line = request_line.decode()
             method, path, proto = request_line.split()
             if self.debug >= 0:
                 self.log.info('%.3f %s %s "%s %s"' % (utime.time(), req, writer, method, path))
@@ -210,10 +211,10 @@ class WebApp:
                 req.qs = qs
                 req.reader = reader
 
-                content_type = req.headers.get(b"Content-Type", b"").split(',')[0]
-                if content_type == b"application/json":
+                content_type = req.headers.get("Content-Type", "").split(',')[0]
+                if content_type == "application/json":
                     yield from req.read_json_data()
-                elif content_type == b"application/x-www-form-urlencoded":
+                elif content_type == "application/x-www-form-urlencoded":
                     yield from req.read_form_data()
 
                 close = yield from handler(req, writer)
