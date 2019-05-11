@@ -207,6 +207,13 @@ class WebApp:
                 req.path = path
                 req.qs = qs
                 req.reader = reader
+
+                content_type = req.headers.get(b"Content-Type", b"").split(',')[0]
+                if content_type == b"application/json":
+                    yield from req.read_json_data()
+                elif content_type == b"application/x-www-form-urlencoded":
+                    yield from req.read_form_data()
+
                 close = yield from handler(req, writer)
             else:
                 yield from start_response(writer, status="404")
