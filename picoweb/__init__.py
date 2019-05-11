@@ -113,6 +113,7 @@ class WebApp:
         # Instantiated lazily
         self.template_loader = None
         self.headers_mode = "parse"
+        self.loop = asyncio.get_event_loop()
 
     def parse_headers(self, reader):
         headers = {}
@@ -340,9 +341,8 @@ class WebApp:
         if not lazy_init:
             for app in self.mounts:
                 app.init()
-        loop = asyncio.get_event_loop()
         if debug > 0:
             print("* Running on http://%s:%s/" % (host, port))
-        loop.create_task(asyncio.start_server(self._handle, host, port))
-        loop.run_forever()
-        loop.close()
+        self.loop.create_task(asyncio.start_server(self._handle, host, port))
+        self.loop.run_forever()
+        self.loop.close()
