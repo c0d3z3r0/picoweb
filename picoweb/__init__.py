@@ -37,14 +37,16 @@ def sendstream(writer, f):
             break
         yield from writer.awrite(buf, 0, l)
 
-
 def jsonify(writer, dict):
     import ujson
     yield from start_response(writer, "application/json")
     yield from writer.awrite(ujson.dumps(dict))
 
-def start_response(writer, content_type="text/html", status="200", headers=None, charset="utf-8", cacheable=False):
+def start_response(writer, content_type="text/html", status="200", headers=None,
+                   charset="utf-8", cacheable=False, compressed=False):
     yield from writer.awrite("HTTP/1.0 %s NA\r\n" % status)
+    if compressed:
+        yield from writer.awrite('Content-Encoding: gzip\r\n')
     yield from writer.awrite("Content-Type: ")
     yield from writer.awrite(content_type)
     yield from writer.awrite("; charset=")
@@ -53,7 +55,7 @@ def start_response(writer, content_type="text/html", status="200", headers=None,
         yield from writer.awrite("\r\n\r\n")
         return
     yield from writer.awrite("\r\n")
-    
+
     if isinstance(headers, bytes) or isinstance(headers, str):
         yield from writer.awrite(headers)
     else:
@@ -289,20 +291,23 @@ class WebApp:
         tmpl = self._load_template(tmpl_name)
         return ''.join(tmpl(*args))
 
-    def sendfile(self, writer, fname, content_type=None, headers=None, cacheable=False):
+    def sendfile(self, writer, fname, content_type=None, headers=None, cacheable=False, compressable=False):
         if not content_type:
             content_type, cacheable = get_mime_type(fname)
         if self.debug:
             cacheable = False
-        try:
-            with pkg_resources.resource_stream(self.pkg, fname) as f:
-                yield from start_response(writer, content_type, "200", headers, cacheable)
-                yield from sendstream(writer, f)
-        except OSError as e:
-            if e.args[0] == uerrno.ENOENT:
-                yield from http_error(writer, "404")
-            else:
-                raise
+        for compress in [True, False] if compressable else [False]:
+            try:
+                _fname = fname + (".gz" if compress else "")
+                with pkg_resources.resource_stream(self.pkg, _fname) as f:
+                    yield from start_response(writer, content_type, "200", headers,
+                                cacheable=cacheable, compressed=compress)
+                    yield from sendstream(writer, f)
+                    return
+            except OSError as e:
+                if e.args[0] != uerrno.ENOENT:
+                    raise
+        yield from http_error(writer, "404")
 
     def handle_static(self, req, resp):
         path = req.url_match.group(1)
@@ -311,7 +316,11 @@ class WebApp:
         if ".." in path:
             yield from http_error(resp, "403")
             return
-        yield from self.sendfile(resp, path)
+        if "gzip" in req.headers.get("Accept-Encoding", ""):
+            compressable = True
+        else:
+            compressable = False
+        yield from self.sendfile(resp, path, compressable=compressable)
 
     def init(self):
         """Initialize a web application. This is for overriding by subclasses.
