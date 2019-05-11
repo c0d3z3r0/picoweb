@@ -72,7 +72,7 @@ def start_response(writer, content_type="text/html", status="200", headers=None,
 
 def http_error(writer, status):
     yield from start_response(writer, status=status)
-    yield from writer.awrite(status)
+    yield from writer.awrite(str(status))
 
 
 class HTTPRequest:
