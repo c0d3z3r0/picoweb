@@ -69,16 +69,20 @@ class HTTPRequest:
     def __init__(self):
         pass
 
-    def read_form_data(self):
+    def read_data(self):
         size = int(self.headers[b"Content-Length"])
-        data = yield from self.reader.readexactly(size)
-        form = parse_qs(data.decode())
-        self.form = form
+        self.data = yield from self.reader.readexactly(size)
+
+    def read_form_data(self):
+        self.form = parse_qs(self.data.decode())
 
     def parse_qs(self):
-        form = parse_qs(self.qs)
-        self.form = form
+        self.form = parse_qs(self.qs)
 
+    def read_json_data(self):
+        import ujson
+        yield from self.read_data()
+        self.json = ujson.loads(self.data.decode())
 
 class WebApp:
 
