@@ -316,7 +316,7 @@ class WebApp:
         if ".." in path:
             yield from http_error(resp, "403")
             return
-        if "gzip" in req.headers.get("Accept-Encoding", ""):
+        if "gzip" in req.headers.get("Accept-Encoding", "") and not self.debug:
             compressable = True
         else:
             compressable = False
