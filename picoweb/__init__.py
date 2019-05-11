@@ -20,14 +20,14 @@ def get_mime_type(fname):
     # Provide minimal detection of important file
     # types to keep browsers happy
     if fname.endswith(".html"):
-        return "text/html"
+        return "text/html", False
     if fname.endswith(".css"):
-        return "text/css"
+        return "text/css", True
     if fname.endswith(".js"):
-        return "text/javascript"
+        return "text/javascript", True
     if fname.endswith(".png") or fname.endswith(".jpg"):
-        return "image"
-    return "text/plain"
+        return "image", True
+    return "text/plain", False
 
 def sendstream(writer, f):
     buf = bytearray(SEND_BUFSZ)
@@ -43,7 +43,7 @@ def jsonify(writer, dict):
     yield from start_response(writer, "application/json")
     yield from writer.awrite(ujson.dumps(dict))
 
-def start_response(writer, content_type="text/html; charset=utf-8", status="200", headers=None):
+def start_response(writer, content_type="text/html; charset=utf-8", status="200", headers=None, cacheable=False):
     yield from writer.awrite("HTTP/1.0 %s NA\r\n" % status)
     yield from writer.awrite("Content-Type: ")
     yield from writer.awrite(content_type)
@@ -55,10 +55,14 @@ def start_response(writer, content_type="text/html; charset=utf-8", status="200"
         yield from writer.awrite(headers)
     else:
         for k, v in headers.items():
+            if k == "Cache-Control":
+                continue
             yield from writer.awrite(k)
             yield from writer.awrite(": ")
             yield from writer.awrite(v)
             yield from writer.awrite("\r\n")
+    if cacheable:
+        yield from writer.awrite("\r\nCache-Control: max-age=86400")
     yield from writer.awrite("\r\n")
 
 def http_error(writer, status):
@@ -282,12 +286,12 @@ class WebApp:
         tmpl = self._load_template(tmpl_name)
         return ''.join(tmpl(*args))
 
-    def sendfile(self, writer, fname, content_type=None, headers=None):
+    def sendfile(self, writer, fname, content_type=None, headers=None, cacheable=False):
         if not content_type:
-            content_type = get_mime_type(fname)
+            content_type, cacheable = get_mime_type(fname)
         try:
             with pkg_resources.resource_stream(self.pkg, fname) as f:
-                yield from start_response(writer, content_type, "200", headers)
+                yield from start_response(writer, content_type, "200", headers, cacheable)
                 yield from sendstream(writer, f)
         except OSError as e:
             if e.args[0] == uerrno.ENOENT:
