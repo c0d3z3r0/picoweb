@@ -282,14 +282,14 @@ class WebApp:
             self.template_loader = utemplate.compiled.Loader(self.pkg, "templates")
         try:
             return self.template_loader.load(tmpl_name)
-        except OSError as e:
-            if e.args[0] == uerrno.ENOENT and \
-               self.template_loader is utemplate.compiled.Loader:
+        except Exception as e:
+            if (isinstance(e, OSError) and e.args[0] == uerrno.ENOENT) or \
+               (isinstance(e, ImportError)) and tmpl_name.replace('.', '_') in e.args[0]:
                 import utemplate.source
-                self.template_loader = utemplate.source.Loader(self.pkg, "templates")
-                return self.template_loader.load(tmpl_name)
+                template_loader = utemplate.source.Loader(self.pkg, "templates")
+                return template_loader.load(tmpl_name)
             else:
-                raise
+                raise(e)
 
     def render_template(self, writer, tmpl_name, args=()):
         tmpl = self._load_template(tmpl_name)
