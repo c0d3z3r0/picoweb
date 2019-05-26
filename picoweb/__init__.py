@@ -278,13 +278,19 @@ class WebApp:
 
     def _load_template(self, tmpl_name):
         if self.template_loader is None:
-            import utemplate.compiled
-            self.template_loader = utemplate.compiled.Loader(self.pkg, "templates")
+            if self.debug:
+                import utemplate.source
+                self.template_loader = utemplate.source.Loader(self.pkg, "templates")
+            else:
+               import utemplate.compiled
+               self.template_loader = utemplate.compiled.Loader(self.pkg, "templates")
         try:
             return self.template_loader.load(tmpl_name)
         except Exception as e:
-            if (isinstance(e, OSError) and e.args[0] == uerrno.ENOENT) or \
-               (isinstance(e, ImportError)) and tmpl_name.replace('.', '_') in e.args[0]:
+            if self.debug:
+                raise(e)
+            elif (isinstance(e, OSError) and e.args[0] == uerrno.ENOENT) or \
+                 (isinstance(e, ImportError)) and tmpl_name.replace('.', '_') in e.args[0]:
                 import utemplate.source
                 template_loader = utemplate.source.Loader(self.pkg, "templates")
                 return template_loader.load(tmpl_name)
