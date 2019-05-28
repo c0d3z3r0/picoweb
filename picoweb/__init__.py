@@ -274,25 +274,9 @@ class WebApp:
 
     def _load_template(self, tmpl_name):
         if self.template_loader is None:
-            if self.debug:
-                import utemplate.source
-                self.template_loader = utemplate.source.Loader(self.pkg, "templates")
-            else:
-               import utemplate.compiled
-               self.template_loader = utemplate.compiled.Loader(self.pkg, "templates")
-        try:
-            return self.template_loader.load(tmpl_name)
-        except Exception as e:
-            if self.debug:
-                self.log.exc(e, "%.3f %r" % (utime.time(), e))
-            elif (isinstance(e, OSError) and e.args[0] == uerrno.ENOENT) or \
-                 (isinstance(e, ImportError)) and tmpl_name.replace('.', '_') in e.args[0]:
-                self.log.warning("%.3f %r" % (utime.time(), e))
-                import utemplate.source
-                template_loader = utemplate.source.Loader(self.pkg, "templates")
-                return template_loader.load(tmpl_name)
-            else:
-                self.log.exc(e, "%.3f %r" % (utime.time(), e))
+            import utemplate.source
+            self.template_loader = utemplate.source.Loader(self.pkg, "templates")
+        return self.template_loader.load(tmpl_name)
 
     def render_template(self, writer, tmpl_name, args=()):
         tmpl = self._load_template(tmpl_name)
