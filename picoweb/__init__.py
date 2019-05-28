@@ -137,14 +137,12 @@ class WebApp:
             request_line = yield from reader.readline()
             request_line = request_line.decode()
             if request_line == "":
-                if self.debug >= 0:
-                    self.log.error("%s: EOF on request start" % reader)
+                self.log.error("%s: EOF on request start" % reader)
                 yield from writer.aclose()
                 return
             req = HTTPRequest()
             method, path, proto = request_line.split()
-            if self.debug >= 0:
-                self.log.info('%.3f %s %s "%s %s"' % (utime.time(), req, writer, method, path))
+            self.log.debug('%.3f %s %s "%s %s"' % (utime.time(), req, writer, method, path))
             path = path.split("?", 1)
             qs = ""
             if len(path) > 1:
@@ -233,14 +231,12 @@ class WebApp:
                 yield from writer.awrite("404\r\n")
             #print(req, "After response write")
         except Exception as e:
-            if self.debug >= 0:
-                self.log.exc(e, "%.3f %s %s %r" % (utime.time(), req, writer, e))
+            self.log.exc(e, "%.3f %s %s %r" % (utime.time(), req, writer, e))
             yield from self.handle_exc(req, writer, e)
 
         if close is not False:
             yield from writer.aclose()
-        if __debug__ and self.debug > 1:
-            self.log.debug("%.3f %s Finished processing request", utime.time(), req)
+        self.log.debug("%.3f %s Finished processing request", utime.time(), req)
 
     def handle_exc(self, req, resp, e):
         # Can be overriden by subclasses. req may be not (fully) initialized.
@@ -288,14 +284,15 @@ class WebApp:
             return self.template_loader.load(tmpl_name)
         except Exception as e:
             if self.debug:
-                raise(e)
+                self.log.exc(e, "%.3f %r" % (utime.time(), e))
             elif (isinstance(e, OSError) and e.args[0] == uerrno.ENOENT) or \
                  (isinstance(e, ImportError)) and tmpl_name.replace('.', '_') in e.args[0]:
+                self.log.warning("%.3f %r" % (utime.time(), e))
                 import utemplate.source
                 template_loader = utemplate.source.Loader(self.pkg, "templates")
                 return template_loader.load(tmpl_name)
             else:
-                raise(e)
+                self.log.exc(e, "%.3f %r" % (utime.time(), e))
 
     def render_template(self, writer, tmpl_name, args=()):
         tmpl = self._load_template(tmpl_name)
@@ -327,8 +324,7 @@ class WebApp:
 
     def handle_static(self, req, resp):
         path = req.url_match.group(1)
-        if self.debug:
-            self.log.debug("%.3f %s Static file request", utime.time(), path)
+        self.log.debug("%.3f %s Static file request", utime.time(), path)
         if ".." in path:
             yield from http_error(resp, "403")
             return
@@ -344,20 +340,35 @@ class WebApp:
         self.inited = True
 
     def run(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False, log=None):
-        if log is None and debug >= 0:
-            import ulogging
-            log = ulogging.getLogger("picoweb")
-            if debug > 0:
-                log.setLevel(ulogging.DEBUG)
+        if log is None:
+            try:
+                import ulogging
+                log = ulogging.getLogger("picoweb")
+                if debug > 0:
+                    log.setLevel(ulogging.DEBUG)
+            except:
+                class DummyLogger:
+
+                    def __init__(self, debug):
+                        if debug >= 0:
+                            self.__getattr__ = \
+                                lambda x: print
+                        else:
+                            self.__getattr__ = \
+                                lambda x: lambda y: None
+
+                log = DummyLogger(debug)
+
         self.log = log
-        gc.collect()
         self.debug = int(debug)
+
+        gc.collect()
         self.init()
         if not lazy_init:
             for app in self.mounts:
                 app.init()
-        if debug > 0:
-            print("* Running on http://%s:%s/" % (host, port))
+
+        self.log.info("* Running on http://%s:%s/" % (host, port))
         self.loop.create_task(asyncio.start_server(self._handle, host, port))
         self.loop.run_forever()
         self.loop.close()
