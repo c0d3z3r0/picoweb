@@ -276,7 +276,7 @@ class WebApp:
         if self.template_loader is None:
             import utemplate.source
             self.template_loader = utemplate.source.Loader(self.pkg, "templates")
-        return self.template_loader.load(tmpl_name)
+        return self.template_loader.load(tmpl_name, self.debug)
 
     def render_template(self, writer, tmpl_name, args=()):
         tmpl = self._load_template(tmpl_name)
