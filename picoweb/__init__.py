@@ -218,13 +218,21 @@ class WebApp:
                 req.qs = qs
                 req.reader = reader
 
-                content_type = req.headers.get("Content-Type", "").split(',')[0]
-                if content_type == "application/json":
-                    yield from req.read_json_data()
-                elif content_type == "application/x-www-form-urlencoded":
-                    yield from req.read_form_data()
+                methods = extra.get("methods")
+                if not methods or method in methods:
+                    content_type = req.headers.get("Content-Type", "").split(',')[0]
+                    if content_type == "application/json":
+                        yield from req.read_json_data()
+                    elif content_type == "application/x-www-form-urlencoded":
+                        yield from req.read_form_data()
 
-                close = yield from handler(req, writer)
+                    close = yield from handler(req, writer)
+
+                else:
+                    self.log.warning("%.3f %s Method not allowed", utime.time(), req)
+                    yield from start_response(writer, status="405")
+                    yield from writer.awrite("405\r\n")
+
             else:
                 yield from start_response(writer, status="404")
                 yield from writer.awrite("404\r\n")
