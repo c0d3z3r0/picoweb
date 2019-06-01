@@ -220,11 +220,12 @@ class WebApp:
 
                 methods = extra.get("methods")
                 if not methods or method in methods:
-                    content_type = req.headers.get("Content-Type", "").split(',')[0]
-                    if content_type == "application/json":
-                        yield from req.read_json_data()
-                    elif content_type == "application/x-www-form-urlencoded":
-                        yield from req.read_form_data()
+                    if extra.get("autoparse"):
+                        content_type = req.headers.get("Content-Type", "").split(',')[0]
+                        if content_type == "application/json":
+                            yield from req.read_json_data()
+                        elif content_type == "application/x-www-form-urlencoded":
+                            yield from req.read_form_data()
 
                     close = yield from handler(req, writer)
 
