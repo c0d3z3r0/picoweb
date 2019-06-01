@@ -331,7 +331,8 @@ class WebApp:
         This is good place to connect to/initialize a database, for example."""
         self.inited = True
 
-    def init_as_task(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False, log=None, loop=None):
+    def init_as_task(self, host="127.0.0.1", port=8081, debug=False,
+                     lazy_init=False, log=None, loop=None, backlog=10):
         if log is None:
             try:
                 import ulogging
@@ -362,11 +363,12 @@ class WebApp:
                 app.init()
 
         self.log.info("* Running on http://%s:%s/" % (host, port))
-        return asyncio.start_server(self._handle, host, port)
+        return asyncio.start_server(self._handle, host, port, backlog=backlog)
 
-    def run(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False, log=None):
+    def run(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False,
+            log=None, backlog=10):
         loop = asyncio.get_event_loop()
-        generator = self.init_as_task(host, port, debug, lazy_init, log, loop)
+        generator = self.init_as_task(host, port, debug, lazy_init, log, loop, backlog)
         loop.create_task(generator)
         loop.run_forever()
         loop.close()
