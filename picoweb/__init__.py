@@ -113,7 +113,6 @@ class WebApp:
         # Instantiated lazily
         self.template_loader = None
         self.headers_mode = "parse"
-        self.loop = asyncio.get_event_loop()
 
     def parse_headers(self, reader):
         headers = {}
@@ -323,7 +322,7 @@ class WebApp:
         This is good place to connect to/initialize a database, for example."""
         self.inited = True
 
-    def run(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False, log=None):
+    def init_as_task(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False, log=None, loop=None):
         if log is None:
             try:
                 import ulogging
@@ -345,6 +344,7 @@ class WebApp:
 
         self.log = log
         self.debug = int(debug)
+        self.loop = loop
 
         gc.collect()
         self.init()
@@ -353,6 +353,11 @@ class WebApp:
                 app.init()
 
         self.log.info("* Running on http://%s:%s/" % (host, port))
-        self.loop.create_task(asyncio.start_server(self._handle, host, port))
-        self.loop.run_forever()
-        self.loop.close()
+        return asyncio.start_server(self._handle, host, port)
+
+    def run(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False, log=None):
+        loop = asyncio.get_event_loop()
+        generator = self.init_as_task(host, port, debug, lazy_init, log, loop)
+        loop.create_task(generator)
+        loop.run_forever()
+        loop.close()
