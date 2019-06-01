@@ -47,27 +47,35 @@ def start_response(writer, content_type="text/html", status="200", headers=None,
     yield from writer.awrite("HTTP/1.0 %s NA\r\n" % status)
     if compressed:
         yield from writer.awrite('Content-Encoding: gzip\r\n')
+
     yield from writer.awrite("Content-Type: ")
     yield from writer.awrite(content_type)
     yield from writer.awrite("; charset=")
     yield from writer.awrite(charset)
-    if not headers:
-        yield from writer.awrite("\r\n\r\n")
-        return
     yield from writer.awrite("\r\n")
+
+    if cacheable:
+        yield from writer.awrite("Cache-Control: max-age=86400\r\n")
+
+    if not headers:
+        yield from writer.awrite("\r\n")
+        return
 
     if isinstance(headers, bytes) or isinstance(headers, str):
         yield from writer.awrite(headers)
+
     else:
         for k, v in headers.items():
-            if k == "Cache-Control":
+            if k in ("Cache-Control",
+                     "Content-Encoding",
+                     "Content-Type"):
                 continue
+
             yield from writer.awrite(k)
             yield from writer.awrite(": ")
             yield from writer.awrite(v)
             yield from writer.awrite("\r\n")
-    if cacheable:
-        yield from writer.awrite("\r\nCache-Control: max-age=86400")
+
     yield from writer.awrite("\r\n")
 
 def http_error(writer, status):
