@@ -227,6 +227,7 @@ class WebApp:
                 req.reader = reader
 
                 methods = extra.get("methods")
+                args = extra.get("args", {})
                 if not methods or method in methods:
                     if extra.get("autoparse"):
                         content_type = req.headers.get("Content-Type", "").split(',')[0]
@@ -235,7 +236,7 @@ class WebApp:
                         elif content_type == "application/x-www-form-urlencoded":
                             yield from req.read_form_data()
 
-                    close = yield from handler(req, writer)
+                    close = yield from handler(req, writer, **args)
 
                 else:
                     self.log.warning("%.3f %s Method not allowed", utime.time(), req)
@@ -322,8 +323,9 @@ class WebApp:
                     raise
         yield from http_error(writer, "404")
 
-    def handle_static(self, req, resp):
-        path = req.url_match.group(1)
+    def handle_static(self, req, resp, path=None):
+        if not path:
+            path = req.url_match.group(1)
         self.log.debug("%.3f %s Static file request", utime.time(), path)
         if ".." in path:
             yield from http_error(resp, "403")
