@@ -27,6 +27,8 @@ def get_mime_type(fname):
         return "text/javascript", True
     if fname.endswith(".png") or fname.endswith(".jpg"):
         return "image", True
+    if fname.endswith(".svg"):
+        return "image/svg+xml", True
     return "text/plain", False
 
 def sendstream(writer, f):
