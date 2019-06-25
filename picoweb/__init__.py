@@ -146,12 +146,12 @@ class WebApp:
             request_line = yield from reader.readline()
             request_line = request_line.decode()
             if request_line == "":
-                self.log.error("%s: EOF on request start" % reader, module=__name__)
+                self.log.error("%s: EOF on request start", reader, module=__name__)
                 yield from writer.aclose()
                 return
             req = HTTPRequest()
             method, path, proto = request_line.split()
-            self.log.lldebug('%.3f %s %s "%s %s"' % (utime.time(), req, writer, method, path), module=__name__)
+            self.log.lldebug('%.3f %s %s "%s %s"', utime.time(), req, writer, method, path, module=__name__)
             path = path.split("?", 1)
             qs = ""
             if len(path) > 1:
@@ -250,7 +250,7 @@ class WebApp:
                 yield from writer.awrite("404\r\n")
             #print(req, "After response write")
         except Exception as e:
-            self.log.exc(e, "%.3f %s %s %r" % (utime.time(), req, writer, e), module=__name__)
+            self.log.exc(e, "%.3f %s %s %r", utime.time(), req, writer, e, module=__name__)
             yield from self.handle_exc(req, writer, e)
 
         if close is not False:
@@ -374,7 +374,7 @@ class WebApp:
             for app in self.mounts:
                 app.init()
 
-        self.log.info("* Running on http://%s:%s/" % (host, port), module=__name__)
+        self.log.info("* Running on http://%s:%s/", host, port, module=__name__)
         return asyncio.start_server(self._handle, host, port, backlog=backlog)
 
     def run(self, host="127.0.0.1", port=8081, debug=False, lazy_init=False,
