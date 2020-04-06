@@ -9,7 +9,11 @@ import uio
 import ure as re
 import uerrno
 import uasyncio as asyncio
-import pkg_resources
+
+try:
+    import pkg_resources
+except:
+    pass
 
 from .utils import parse_qs
 
@@ -308,6 +312,9 @@ class WebApp:
         return ''.join(tmpl(*args))
 
     def sendfile(self, writer, fname, content_type=None, headers=None, cacheable=False, compressable=False):
+        if not 'pkg_resources' in sys.modules:
+            yield from http_error(writer, "404")
+
         if not content_type:
             content_type, cacheable = get_mime_type(fname)
         if self.debug:
