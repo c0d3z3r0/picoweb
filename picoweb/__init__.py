@@ -48,7 +48,7 @@ def jsonify(writer, dict):
     yield from start_response(writer, "application/json")
     yield from writer.awrite(ujson.dumps(dict))
 
-def start_response(writer, content_type="text/html", status="200", headers=None,
+def start_response(writer, content_type="text/html", status="200", headers={},
                    charset="utf-8", cacheable=False, compressed=False):
     yield from writer.awrite("HTTP/1.0 %s NA\r\n" % status)
     if compressed:
@@ -62,6 +62,11 @@ def start_response(writer, content_type="text/html", status="200", headers=None,
 
     if cacheable:
         yield from writer.awrite("Cache-Control: max-age=86400\r\n")
+
+    if not "Access-Control-Allow-Origin" in headers:
+        yield from writer.awrite("Access-Control-Allow-Origin: *\r\n")
+        yield from writer.awrite('Access-Control-Allow-Methods: GET,POST\r\n')
+        yield from writer.awrite('Access-Control-Allow-Headers: Content-Type\r\n')
 
     if not headers:
         yield from writer.awrite("\r\n")
